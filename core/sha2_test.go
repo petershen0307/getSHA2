@@ -14,7 +14,7 @@ func Test_isSkip(t *testing.T) {
 		bSkip bool
 		ret   error
 	}
-	SetFilter([]string{filepath.FromSlash("/a/b"), filepath.FromSlash("/aa/bb")}, []string{"exe"})
+	iFilter := genFilter([]string{filepath.FromSlash("/a/b"), filepath.FromSlash("/aa/bb")}, []string{"exe"})
 	tests := []struct {
 		name string
 		args args
@@ -26,7 +26,7 @@ func Test_isSkip(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got1, got2 := isSkip(tt.args.path); got1 != tt.want.bSkip && got2 != tt.want.ret {
+			if got1, got2 := iFilter.isSkip(tt.args.path); got1 != tt.want.bSkip && got2 != tt.want.ret {
 				t.Errorf("isSkip() = %v %v, want %v", got1, got2, tt.want)
 			}
 		})
