@@ -1,7 +1,6 @@
 package sha2Cli
 
 import (
-	"log"
 	"strings"
 
 	"github.com/petershen0307/getSHA2/core"
@@ -37,12 +36,7 @@ func CreateCli() *cli.App {
 func cliRouting(c *cli.Context) error {
 	paths := c.String("path")
 	exts := c.String("ext")
-	core.SetFilter(strings.Split(paths, ","), strings.Split(exts, ","))
-	start := c.String("start")
-	if "" == start {
-		log.Fatal("please input start parameter")
-		return nil
-	}
-	core.Start(start)
+	startPath := c.String("start")
+	core.Start(startPath, strings.Split(paths, ","), strings.Split(exts, ","))
 	return nil
 }

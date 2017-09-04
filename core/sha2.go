@@ -2,8 +2,8 @@ package core
 
 import (
 	"crypto/sha256"
-	"encoding/base64"
-	"io"
+	"encoding/hex"
+	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
@@ -14,19 +14,30 @@ type filter struct {
 	extensions  map[string]byte
 }
 
-var inputFilter filter
+func (i filter) isSkip(path string) (bool, error) {
+	dir := filepath.Dir(path)
+	if _, ok := i.directories[dir]; ok {
+		return true, filepath.SkipDir
+	}
+	ext := filepath.Ext(path)
+	if _, ok := i.extensions[ext]; ok {
+		return true, nil
+	}
+	return false, nil
+}
 
-// SetFilter set the filter dir and ext
-func SetFilter(dirs []string, extensions []string) {
+// genFilter get the filter dir and ext
+func genFilter(dirs []string, extensions []string) filter {
+	var inputFilter filter
 	inputFilter.directories = make(map[string]byte)
 	inputFilter.extensions = make(map[string]byte)
-	outputHash = make(map[string][]string)
 	for _, dir := range dirs {
-		inputFilter.directories[dir] = 0
+		inputFilter.directories[filepath.Dir(dir)] = 0
 	}
 	for _, ext := range extensions {
 		inputFilter.extensions[ext] = 0
 	}
+	return inputFilter
 }
 
 // OutputHash the output map with key:hash, value:path list
@@ -39,43 +50,27 @@ func GetOutputHash() map[string][]string {
 
 // calculateSHA2 don't check the input is file or not. It will assume input is file.
 func calculateSHA2(filePath string) []byte {
-	f, err := os.Open(filePath)
+	content, err := ioutil.ReadFile(filePath)
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer f.Close()
-
-	h := sha256.New()
-	if _, err := io.Copy(h, f); err != nil {
-		log.Fatal(err)
-	}
-	return h.Sum(nil)
+	sum := sha256.Sum256(content)
+	return sum[:]
 }
 
-func isSkip(path string) (bool, error) {
-	dir := filepath.Dir(path)
-	if _, ok := inputFilter.directories[dir]; ok {
-		return true, filepath.SkipDir
-	}
-	ext := filepath.Ext(path)
-	if _, ok := inputFilter.extensions[ext]; ok {
-		return true, nil
-	}
-	return false, nil
-}
-
-func walkCallback(path string, f os.FileInfo, err error) error {
-	if f.IsDir() {
+func genWalkCallback(i filter) filepath.WalkFunc {
+	return func(path string, f os.FileInfo, err error) error {
+		if f.IsDir() {
+			return nil
+		}
+		if bSkip, ret := i.isSkip(path); bSkip {
+			return ret
+		}
+		hash := calculateSHA2(path)
+		hexStr := hex.EncodeToString(hash)
+		outputHash[hexStr] = append(outputHash[hexStr], path)
 		return nil
 	}
-	if bSkip, ret := isSkip(path); bSkip {
-		return ret
-	}
-	hash := calculateSHA2(path)
-	// change binary format to string via base64 encode
-	base64String := base64.URLEncoding.EncodeToString(hash)
-	outputHash[base64String] = append(outputHash[base64String], path)
-	return nil
 }
 
 func getDevices() []string {
@@ -91,12 +86,14 @@ func getDevices() []string {
 }
 
 // Start is the entry function will go through all hard disk
-func Start(path string) {
+func Start(path string, dirs, extensions []string) {
 	roots := []string{path}
 	if "" == path {
 		roots = getDevices()
 	}
+	theFilter := genFilter(dirs, extensions)
+	outputHash = make(map[string][]string)
 	for _, root := range roots {
-		filepath.Walk(root, walkCallback)
+		filepath.Walk(root, genWalkCallback(theFilter))
 	}
 }
