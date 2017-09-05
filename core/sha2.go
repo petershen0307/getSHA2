@@ -65,4 +65,5 @@ func Start(path string, dirs, extensions []string) {
 	for _, root := range roots {
 		filepath.Walk(root, genWalkCallback(theFilter))
 	}
+	writeToCSV()
 }
