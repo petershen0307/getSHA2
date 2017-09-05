@@ -13,7 +13,7 @@ func Test_isSkip(t *testing.T) {
 		bSkip bool
 		ret   error
 	}
-	iFilter := genFilter([]string{filepath.FromSlash("/a/b"), filepath.FromSlash("/aa/bb")}, []string{"exe"})
+	iFilter := genFilter([]string{filepath.FromSlash("/a/b"), filepath.FromSlash("/aa/bb")}, []string{".exe"})
 	tests := []struct {
 		name string
 		args args
